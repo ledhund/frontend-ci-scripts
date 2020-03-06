@@ -61,6 +61,7 @@ if (!checkRequiredFiles([paths.appHtml, paths.appIndexJs])) {
 // Process CLI arguments
 const argv = process.argv.slice(2);
 const writeStatsJson = argv.indexOf('--stats') !== -1;
+const disableMinification = argv.indexOf('--nomini') !== -1;
 
 // We require that you explictly set browsers and do not fall back to
 // browserslist defaults.
@@ -134,11 +135,29 @@ checkBrowsers(paths.appPath, isInteractive)
     process.exit(1);
   });
 
+function disableMinificationSettings(config) {
+  config.optimization.minimize = false;
+  const rules = config.module.rules.filter(rule => rule.oneOf);
+  rules.forEach(rule => {
+    rule.oneOf &&
+      rule.oneOf.forEach(rule => {
+        if (rule.options && rule.options.hasOwnProperty('babelrc')) {
+          rule.options.compact = false;
+        }
+      });
+  });
+}
+
 // Create the production build and print the deployment instructions.
 function build(previousFileSizes) {
-  console.log('Creating an optimized production build...');
+  if (disableMinification) {
+    disableMinificationSettings(config);
+    console.log('Creating an unoptimized production build...');
+  } else {
+    console.log('Creating an optimized production build...');
+  }
 
-  let compiler = webpack(config);
+  const compiler = webpack(config);
   return new Promise((resolve, reject) => {
     compiler.run((err, stats) => {
       let messages;
